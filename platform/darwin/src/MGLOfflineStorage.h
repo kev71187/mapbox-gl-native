@@ -171,9 +171,8 @@ typedef NS_ENUM(NSUInteger, MGLResourceKind) {
 
 /**
  MGLOfflineStorage implements a singleton (shared object) that manages offline
- packs. All of this class’s instance methods are asynchronous, reflecting the
- fact that offline resources are stored in a database. The shared object
- maintains a canonical collection of offline packs in its `packs` property.
+ packs and ambient caching. All of this class’s instance methods are asynchronous,
+ reflecting the fact that offline resources are stored in a database. The shared object maintains a canonical collection of offline packs in its `packs` property.
  
  #### Related examples
  See the <a href="https://docs.mapbox.com/ios/maps/examples/offline-pack/">
@@ -304,6 +303,21 @@ MGL_EXPORT
 - (void)removePack:(MGLOfflinePack *)pack withCompletionHandler:(nullable MGLOfflinePackRemovalCompletionHandler)completion;
 
 /**
+ Checks that the tiles in the specified offline pack match those from the
+ server. Local tiles that do not match the latest version on the server
+ are updated.
+ 
+ This is more efficient than deleting the offline pack and downloading it
+ again. If the data stored locally matches that on the server, new data will
+ not be downloaded.
+ 
+ @param pack The offline pack to be invalidated.
+ @param completion The completion handler to call once the pack has been
+ removed. This handler is executed asynchronously on the main queue.
+ */
+
+- (void)invalidatePack:(MGLOfflinePack *)pack withCompletionHandler:(void (^)(NSError * _Nullable))completion;
+/**
  Forcibly, asynchronously reloads the `packs` property. At some point after this
  method is called, the pointer values of the `MGLOfflinePack` objects in the
  `packs` property change, even if the underlying data for these packs has not
@@ -340,6 +354,71 @@ MGL_EXPORT
  as part of an offline pack or due to caching during normal use of `MGLMapView`.
  */
 @property (nonatomic, readonly) unsigned long long countOfBytesCompleted;
+
+
+#pragma mark - Managing Ambient Cache
+
+/**
+ Sets the maximum ambient cache size in megabytes. The default maximum cache
+ size is 50 MB. To disable ambient caching, set the maximum ambient cache size
+ to 0. Setting the maximum ambient cache size does not impact the maximum size
+ of offline packs.
+ 
+ If you intend to use offline packs, this may limit the amount of space available
+ for ambient caching, with no impact on offline packs. If you set the maximum
+ ambient cache size to 30 MB and offline packs use 20 MB, there may only be 10 MB
+ reserved for the ambient cache.
+ 
+ This method should be called before the map and map style have been loaded.
+ 
+ This method is potentially expensive, as the ambient cache will trim cached data
+ to prevent the database from being larger than the specified amount.
+ 
+ @param cacheSize The maximum size in bytes for the ambient cache.
+ @param completion The completion handler to call once the maximum ambient cache size
+ has been set. This handler is executed synchronously on the main queue.
+ */
+
+- (void)setMaximumAmbientCacheSize:(NSUInteger)cacheSize withCompletionHandler:(void (^)(NSError *_Nullable error))completion;
+
+/**
+ Checks that the tiles in the ambient cache match those from the server. Local
+ tiles that do not match the latest version on the server are updated.
+ 
+ This is more efficient than cleaning the cache because valid local tiles will
+ not be downloaded again.
+ 
+ Resources shared with offline packs will not be affected by this method.
+ 
+ @param completion The completion handler to call once the ambient cache has
+ been revalidated. This handler is executed asynchronously on the main queue.
+ */
+
+- (void)invalidateAmbientCacheWithCompletionHandler:(void (^)(NSError *_Nullable error))completion;
+
+/**
+ Erase resources from the ambient cache.
+ 
+ Resources that are shared with offline regions will not be affected by
+ this method.
+ 
+ @param completion The completion handler to call once the ambient cache has been
+ cleared. This handler is executed asynchronously on the main queue.
+ */
+
+- (void)clearAmbientCacheWithCompletionHandler:(void (^)(NSError *_Nullable error))completion;
+
+/**
+ Delete the existing database, which includes both the ambient cache and offline packs,
+ then reinitialize it.
+ 
+ You typically do not need to call this method.
+ 
+ @param completion The completion handler to call once the pack has database has
+ been reset. This handler is executed asynchronously on the main queue.
+ */
+
+- (void)resetDatabaseWithCompletionHandler:(void (^)(NSError *_Nullable error))completion;
 
 /*
  Inserts the provided resource into the ambient cache.

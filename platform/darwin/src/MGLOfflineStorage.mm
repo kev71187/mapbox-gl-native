@@ -48,7 +48,6 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
 @property (nonatomic) std::shared_ptr<mbgl::DefaultFileSource> mbglFileSource;
 @property (nonatomic) std::string mbglCachePath;
 @property (nonatomic, getter=isPaused) BOOL paused;
-
 @end
 
 @implementation MGLOfflineStorage {
@@ -431,7 +430,6 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
         completion(nil);
         return;
     }
-
     _mbglFileSource->deleteOfflineRegion(std::move(*mbglOfflineRegion), [&, completion](std::exception_ptr exception) {
         NSError *error;
         if (exception) {
@@ -445,6 +443,29 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
             });
         }
     });
+
+}
+
+- (void)invalidatePack:(MGLOfflinePack *)pack withCompletionHandler:(void (^)(NSError * _Nullable))completion {
+    mbgl::OfflineRegion& region = *pack.mbglOfflineRegion;
+    NSError *error;
+    if (!pack.mbglOfflineRegion) {
+        completion(nil);
+        return;
+    }
+
+    _mbglFileSource->invalidateOfflineRegion(region, [&](std::exception_ptr exception) {
+        if (exception) {
+            error = [NSError errorWithDomain:MGLErrorDomain code:-1 userInfo:@{
+                NSLocalizedDescriptionKey: @(mbgl::util::toString(exception).c_str()),
+            }];
+        }
+    });
+    if (completion) {
+        dispatch_async(dispatch_get_main_queue(), [&, completion, error](void) {
+            completion(error);
+        });
+    }
 }
 
 - (void)reloadPacks {
@@ -486,6 +507,72 @@ const MGLExceptionName MGLUnsupportedRegionTypeException = @"MGLUnsupportedRegio
     _mbglFileSource->setOfflineMapboxTileCountLimit(maximumCount);
 }
 
+#pragma mark - Ambient Cache management
+
+- (void)setMaximumAmbientCacheSize:(NSUInteger)cacheSize withCompletionHandler:(void (^)(NSError  * _Nullable))completion {
+    _mbglFileSource->setMaximumAmbientCacheSize(cacheSize, [&, completion](std::exception_ptr exception) {
+        NSError *error;
+        if (exception) {
+            error = [NSError errorWithDomain:MGLErrorDomain code:-1 userInfo:@{
+                NSLocalizedDescriptionKey: @(mbgl::util::toString(exception).c_str()),
+            }];
+        }
+        if (completion) {
+            dispatch_sync(dispatch_get_main_queue(), ^ {
+                completion(error);
+            });
+        }
+    });
+}
+
+- (void)invalidateAmbientCacheWithCompletionHandler:(void (^)(NSError *_Nullable))completion {
+    _mbglFileSource->invalidateAmbientCache([&, completion](std::exception_ptr exception){
+        NSError *error;
+        if (exception) {
+            // Convert std::exception_ptr to an NSError.
+            error = [NSError errorWithDomain:MGLErrorDomain code:-1 userInfo:@{
+                NSLocalizedDescriptionKey: @(mbgl::util::toString(exception).c_str()),
+            }];
+        }
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), ^ {
+                completion(error);
+            });
+        }
+    });
+}
+
+- (void)clearAmbientCacheWithCompletionHandler:(void (^)(NSError *_Nullable error))completion {
+    _mbglFileSource->clearAmbientCache([&, completion](std::exception_ptr exception){
+        NSError *error;
+        if (exception) {
+            error = [NSError errorWithDomain:MGLErrorDomain code:-1 userInfo:@{
+                NSLocalizedDescriptionKey: @(mbgl::util::toString(exception).c_str()),
+            }];
+        }
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), [&, completion, error](void) {
+                completion(error);
+            });
+        }
+    });
+}
+
+- (void)resetDatabaseWithCompletionHandler:(void (^)(NSError *_Nullable error))completion {
+    _mbglFileSource->resetDatabase([&, completion](std::exception_ptr exception) {
+        NSError *error = nil;
+        if (exception) {
+            error = [NSError errorWithDomain:MGLErrorDomain code:-1 userInfo:@{
+                NSLocalizedDescriptionKey: @(mbgl::util::toString(exception).c_str()),
+            }];
+        }
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(error);
+            });
+        }
+        });
+}
 #pragma mark -
 
 - (unsigned long long)countOfBytesCompleted {
