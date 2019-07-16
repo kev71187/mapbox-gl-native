@@ -1,3 +1,25 @@
+# IndigoAG fork of mapbox
+Mapbox offline storage was not properly supported in the latest version of their build; so we forked the repo and made several changes to thresholds to allow it to work
+
+As of building this:
+  We merged this https://github.com/mapbox/mapbox-gl-native/pull/14978
+  This was the last commit https://github.com/mapbox/mapbox-gl-native/commit/cdd47c035807583c0437bd75a0deb3347037042d
+  Build: izos-v5.2.0-alpha.3
+
+To build this project ensure you have all of the requirements installed located at platform/ios/INSTALL.md
+Make sure you have
+`pip install awscli --upgrade --user`
+
+Run:
+`
+  ./build_for_release.sh
+`
+
+Upload the contents of build/ios/pkg/dynamic to s3 and increment the version. Example
+
+`
+`
+
 # Mapbox GL Native
 
 A library for embedding interactive, customizable vector maps into native applications on multiple platforms. It takes stylesheets that conform to the [Mapbox Style Specification](https://github.com/mapbox/mapbox-gl-style-spec/), applies them to vector tiles that conform to the [Mapbox Vector Tile Specification](https://github.com/mapbox/vector-tile-spec), and renders them using OpenGL. [Mapbox GL JS](https://github.com/mapbox/mapbox-gl-js) is the WebGL-based counterpart, designed for use on the Web.
