@@ -13,7 +13,7 @@ nextVersion=$((lastVersion + 1))
 version="ios-v5.2.0-alpha.3-indigo-$nextVersion"
 echo "Next version", $version
 zip -r ./build/ios/pkg/dynamic ./build/ios/pkg
-aws s3 cp ./build/ios/pkg/dynamic.zip "$directory$version/build.zip"
+aws s3 cp ./build/ios/pkg/dynamic.zip "$directory$version/build.zip" --acl public-read
 echo "Package located at: "
 echo "https://indigo-mapbox-distribution.s3.amazonaws.com/framework/$version/build.zip"
 echo "Change the s3 url located https://github.com/indigo-ag/react-native-mapbox-gl/blob/develop/scripts/download-mapbox-gl-native-ios.sh"
